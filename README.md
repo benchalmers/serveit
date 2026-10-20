@@ -2,7 +2,7 @@
 
 Serve a single file over HTTP on **0.0.0.0** so another machine can grab it, and print the URLs to do so.
 
-```
+```text
 $ serveit ./dist/release.zip
 
 Serving /home/bench/coding/serveit/dist/release.zip (42.3 MB) on 0.0.0.0:8080
