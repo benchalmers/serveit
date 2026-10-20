@@ -17,6 +17,7 @@ let directory: string;
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), "serveit-cli-"));
   await writeFile(join(directory, "shared.txt"), CONTENT);
+  await writeFile(join(directory, "page.md"), "# Page\n\nBody with **markdown**.\n");
 });
 
 after(async () => {
@@ -49,26 +50,60 @@ const collectStderr = (child: CliProcess): Promise<string> =>
 const exitCodeOf = (child: CliProcess): Promise<number | null> =>
   new Promise((resolve) => child.once("exit", resolve));
 
-const getFile = (port: number, path: string): Promise<string> =>
+type Resource = {
+  readonly status: number;
+  readonly contentType: string | undefined;
+  readonly contentLength: string | undefined;
+  readonly body: string;
+};
+
+const getResource = (port: number, path: string): Promise<Resource> =>
   new Promise((resolve, reject) => {
     const request = httpRequest({ host: "127.0.0.1", port, path }, (response) => {
       const chunks: Buffer[] = [];
       response.on("data", (chunk: Buffer) => chunks.push(chunk));
-      response.on("end", () => resolve(Buffer.concat(chunks).toString()));
+      response.on("end", () =>
+        resolve({
+          status: response.statusCode ?? 0,
+          contentType: response.headers["content-type"],
+          contentLength: response.headers["content-length"],
+          body: Buffer.concat(chunks).toString(),
+        }),
+      );
     });
     request.once("error", reject);
     request.end();
   });
 
+const portFromBanner = (banner: string, fileName: string): number => {
+  const match = banner.match(new RegExp(`-> http://localhost:(\\d+)/${fileName}`));
+  const port = Number(match?.[1]);
+  assert.ok(Number.isInteger(port) && port > 0 && port <= 65535, `bad banner: ${banner}`);
+  return port;
+};
+
 test("the CLI prints a reachable url and serves the file from it", async () => {
   const child = spawnCli([join(directory, "shared.txt"), "--port", "0"]);
   const banner = await collectBanner(child);
-  const bannerUrl = banner.match(/-> http:\/\/localhost:(\d+)\/shared\.txt/);
-  assert.ok(bannerUrl, `no url in banner: ${banner}`);
+  const port = portFromBanner(banner, "shared\\.txt");
 
-  const port = Number(bannerUrl[1]);
-  assert.ok(Number.isInteger(port) && port > 0 && port <= 65535, `bad port: ${bannerUrl[1]}`);
-  assert.equal(await getFile(port, "/shared.txt"), CONTENT);
+  assert.equal((await getResource(port, "/shared.txt")).body, CONTENT);
+
+  child.kill("SIGINT");
+  assert.equal(await exitCodeOf(child), 0);
+});
+
+test("the CLI renders markdown files as html with --markdown", async () => {
+  const child = spawnCli([join(directory, "page.md"), "--markdown", "--port", "0"]);
+  const banner = await collectBanner(child);
+  assert.match(banner, /Rendering markdown as HTML/);
+  const port = portFromBanner(banner, "page\\.md");
+
+  const page = await getResource(port, "/page.md");
+  assert.equal(page.contentType, "text/html; charset=utf-8");
+  assert.equal(page.contentLength, String(Buffer.byteLength(page.body)));
+  assert.match(page.body, /<h1>Page<\/h1>/);
+  assert.match(page.body, /<style>/);
 
   child.kill("SIGINT");
   assert.equal(await exitCodeOf(child), 0);

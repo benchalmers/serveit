@@ -1,7 +1,7 @@
 {
   "name": "serveit",
-  "version": "0.1.0",
-  "description": "Serve a single file over HTTP on all interfaces and print the URLs to reach it",
+  "version": "0.2.0",
+  "description": "Serve a single file over HTTP on all interfaces, optionally rendering markdown as styled HTML",
   "type": "module",
   "bin": {
     "serveit": "src/index.ts"
@@ -19,5 +19,8 @@
     "@types/node": "^24.0.0",
     "oxlint": "^1.0.0",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "markdown-it": "^15.0.3"
   }
 }

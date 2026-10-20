@@ -30,9 +30,13 @@ const resolveFile = (filePath: string): ResolvedFile => {
   return { path: absolute, name: basename(absolute), size: stats.size };
 };
 
-const startServing = async (file: ResolvedFile, port: number): Promise<RunningServer> => {
+const startServing = async (
+  file: ResolvedFile,
+  port: number,
+  renderMarkdown: boolean,
+): Promise<RunningServer> => {
   try {
-    return await startServer({ filePath: file.path, port });
+    return await startServer({ filePath: file.path, port, renderMarkdown });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
       fail(`port ${port} is already in use (pick another with --port)`);
@@ -56,13 +60,14 @@ const main = async (): Promise<void> => {
     fail(parsed.message);
   }
   const file = resolveFile(parsed.filePath);
-  const running = await startServing(file, parsed.port);
+  const running = await startServing(file, parsed.port, parsed.renderMarkdown);
   stdout.write(
     `${bannerFor({
       displayPath: file.path,
       name: file.name,
       size: file.size,
       port: running.port,
+      renderMarkdown: parsed.renderMarkdown,
     })}\n`,
   );
   process.once("SIGINT", () => {

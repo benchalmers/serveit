@@ -7,16 +7,18 @@ and prints the URLs it is reachable at.
 
 Options:
   -p, --port <port>  Port to listen on (default: ${DEFAULT_PORT}, 0 picks a free port)
+  -m, --markdown     Render the file as a styled HTML page instead of serving it raw
   -h, --help         Show this help
 `;
 
 export type CliParseResult =
-  | { readonly kind: "run"; readonly filePath: string; readonly port: number }
+  | { readonly kind: "run"; readonly filePath: string; readonly port: number; readonly renderMarkdown: boolean }
   | { readonly kind: "help" }
   | { readonly kind: "error"; readonly message: string };
 
 type PartialOptions = {
   readonly port: number;
+  readonly renderMarkdown: boolean;
   readonly filePath?: string;
 };
 
@@ -30,7 +32,7 @@ const parsePort = (value: string | undefined): number | undefined => {
 const finish = (options: PartialOptions): CliParseResult =>
   options.filePath === undefined
     ? { kind: "error", message: "no file given" }
-    : { kind: "run", filePath: options.filePath, port: options.port };
+    : { kind: "run", filePath: options.filePath, port: options.port, renderMarkdown: options.renderMarkdown };
 
 const parseTokens = (argv: readonly string[], options: PartialOptions): CliParseResult => {
   const [argument, ...rest] = argv;
@@ -39,6 +41,9 @@ const parseTokens = (argv: readonly string[], options: PartialOptions): CliParse
   }
   if (argument === "-h" || argument === "--help") {
     return { kind: "help" };
+  }
+  if (argument === "-m" || argument === "--markdown") {
+    return parseTokens(rest, { ...options, renderMarkdown: true });
   }
   if (argument === "-p" || argument === "--port" || argument.startsWith("--port=")) {
     const value = argument.startsWith("--port=") ? argument.slice("--port=".length) : rest[0];
@@ -58,4 +63,4 @@ const parseTokens = (argv: readonly string[], options: PartialOptions): CliParse
 };
 
 export const parseArgs = (argv: readonly string[]): CliParseResult =>
-  parseTokens(argv, { port: DEFAULT_PORT });
+  parseTokens(argv, { port: DEFAULT_PORT, renderMarkdown: false });

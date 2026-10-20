@@ -9,6 +9,22 @@ test("a bare file argument runs on the default port", () => {
     kind: "run",
     filePath: "notes.txt",
     port: 8080,
+    renderMarkdown: false,
+  });
+});
+
+test("--markdown and -m request html rendering without eating the file", () => {
+  assert.deepEqual(parseArgs(["--markdown", "notes.md"]), {
+    kind: "run",
+    filePath: "notes.md",
+    port: 8080,
+    renderMarkdown: true,
+  });
+  assert.deepEqual(parseArgs(["notes.md", "-m", "--port", "9000"]), {
+    kind: "run",
+    filePath: "notes.md",
+    port: 9000,
+    renderMarkdown: true,
   });
 });
 
@@ -17,6 +33,7 @@ test("--port consumes its value instead of treating it as the file", () => {
     kind: "run",
     filePath: "notes.txt",
     port: 8321,
+    renderMarkdown: false,
   });
 });
 
@@ -25,11 +42,13 @@ test("-p before the file and --port=value both work", () => {
     kind: "run",
     filePath: "notes.txt",
     port: 3000,
+    renderMarkdown: false,
   });
   assert.deepEqual(parseArgs(["notes.txt", "--port=0"]), {
     kind: "run",
     filePath: "notes.txt",
     port: 0,
+    renderMarkdown: false,
   });
 });
 
@@ -78,6 +97,17 @@ test("bannerFor shows the bind address and every url", () => {
   });
   assert.match(banner, /Serving \/tmp\/notes\.txt \(2\.0 KB\) on 0\.0\.0\.0:8080/);
   assert.match(banner, /http:\/\/localhost:8080\/notes\.txt/);
+});
+
+test("bannerFor mentions html rendering when it is on", () => {
+  const banner = bannerFor({
+    displayPath: "/tmp/notes.md",
+    name: "notes.md",
+    size: 100,
+    port: 8080,
+    renderMarkdown: true,
+  });
+  assert.match(banner, /Rendering markdown as HTML/);
 });
 
 test("formatBytes scales units and handles empty files", () => {

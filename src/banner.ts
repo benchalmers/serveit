@@ -18,12 +18,14 @@ export const bannerFor = (options: {
   readonly name: string;
   readonly size: number;
   readonly port: number;
+  readonly renderMarkdown?: boolean;
 }): string => {
   const urls = urlsFor(options.port, options.name)
     .map((url) => `  -> ${url}`)
     .join("\n");
   return [
     `Serving ${options.displayPath} (${formatBytes(options.size)}) on 0.0.0.0:${options.port}`,
+    ...(options.renderMarkdown === true ? ["Rendering markdown as HTML"] : []),
     "",
     "Available at:",
     urls,

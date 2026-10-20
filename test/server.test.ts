@@ -9,6 +9,8 @@ import { contentTypeFor } from "../src/mime.ts";
 import { externalIPv4Addresses } from "../src/network.ts";
 
 const FILE_CONTENT = "hello from serveit\n".repeat(1000);
+const MARKDOWN_CONTENT =
+  "# Notes\n\nA **table**:\n\n| name | value |\n| - | - |\n| u\u0308 | 1 |\n\n<script>alert(1)</script>\n";
 
 let directory: string;
 let running: RunningServer;
@@ -17,6 +19,7 @@ let baseUrl: string;
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), "serveit-test-"));
   await writeFile(join(directory, "hello.txt"), FILE_CONTENT);
+  await writeFile(join(directory, "notes.md"), MARKDOWN_CONTENT);
   running = await startServer({ filePath: join(directory, "hello.txt"), port: 0 });
   baseUrl = `http://127.0.0.1:${running.port}`;
 });
@@ -64,6 +67,68 @@ test("the served file keeps updating if the file changes on disk", async () => {
       headers: { connection: "close" },
     });
     assert.equal(await response.text(), "v2");
+  } finally {
+    await server.close();
+  }
+});
+
+test("markdown files are served raw unless rendering is requested", async () => {
+  const server = await startServer({ filePath: join(directory, "notes.md"), port: 0 });
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.port}/notes.md`, {
+      headers: { connection: "close" },
+    });
+    assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8");
+    assert.equal(await response.text(), MARKDOWN_CONTENT);
+  } finally {
+    await server.close();
+  }
+});
+
+test("renderMarkdown serves a styled html page with a correct byte length", async () => {
+  const server = await startServer({
+    filePath: join(directory, "notes.md"),
+    port: 0,
+    renderMarkdown: true,
+  });
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.port}/notes.md`, {
+      headers: { connection: "close" },
+    });
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "text/html; charset=utf-8");
+    assert.equal(response.headers.get("content-length"), String(Buffer.byteLength(body)));
+    assert.match(response.headers.get("content-disposition") ?? "", /filename="notes\.html"/);
+    assert.match(body, /<h1>Notes<\/h1>/);
+    assert.match(body, /<table>/);
+    assert.match(body, /&lt;script&gt;/);
+    assert.doesNotMatch(body, /<script>/);
+    assert.match(body, /<style>/);
+  } finally {
+    await server.close();
+  }
+});
+
+test("renderMarkdown answers HEAD with the html length and no body", async () => {
+  const server = await startServer({
+    filePath: join(directory, "notes.md"),
+    port: 0,
+    renderMarkdown: true,
+  });
+  try {
+    const get = await fetch(`http://127.0.0.1:${server.port}/notes.md`, {
+      headers: { connection: "close" },
+    });
+    const expectedLength = get.headers.get("content-length");
+    await get.text();
+    const head = await fetch(`http://127.0.0.1:${server.port}/notes.md`, {
+      method: "HEAD",
+      headers: { connection: "close" },
+    });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get("content-length"), expectedLength);
+    assert.equal(await head.text(), "");
   } finally {
     await server.close();
   }
