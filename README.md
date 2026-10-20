@@ -15,6 +15,32 @@ Available at:
 Press Ctrl+C to stop
 ```
 
+## Install
+
+Requires Node `>=22.18` (for built-in TypeScript type stripping; there is no build step).
+
+```bash
+# from this directory — installs into pnpm's global bin dir
+pnpm add -g .
+
+serveit --help        # verify
+```
+
+`pnpm add -g .` copies the package into the global store, so re-run it after changing the source. To remove:
+
+```bash
+pnpm remove -g serveit
+```
+
+If `serveit` is not found afterwards, add pnpm's global bin dir to your `PATH` (`pnpm setup` does this):
+
+```bash
+export PATH="$(pnpm bin -g):$PATH"
+```
+
+Alternatively install a packed tarball (`pnpm pack && pnpm add -g ./serveit-0.1.0.tgz`), or publish and
+install from the registry (`pnpm add -g serveit` — use a scope like `@yourname/serveit` if the name is taken).
+
 ## Usage
 
 ```bash
