@@ -1,0 +1,23 @@
+{
+  "name": "serveit",
+  "version": "0.1.0",
+  "description": "Serve a single file over HTTP on all interfaces and print the URLs to reach it",
+  "type": "module",
+  "bin": {
+    "serveit": "src/index.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "oxlint": "^1.0.0",
+    "typescript": "^5.8.0"
+  }
+}
